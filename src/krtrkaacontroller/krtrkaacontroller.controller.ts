@@ -1,38 +1,35 @@
-import { Controller, Get } from '@nestjs/common';
-import { google } from 'googleapis';
+import { Controller, Get, Param, Redirect } from '@nestjs/common';
+import { KRTRKAAService } from 'src/krtrkaa.service';
 
-const config = require('../../.config/config_google_sheet.json');
 
-@Controller('tracks')
+@Controller('track')
 export class KrtrkaacontrollerController {
+    private readonly krtrkaaService;
+    constructor(service: KRTRKAAService) {  
+        this.krtrkaaService = service;
+    }
     
     @Get()
     default() : string {
         return 'return all track'
     }
 
-    @Get("all")
-    async getListAll() : Promise<object> {
-        const result = {};
-
-        const auth = new google.auth.JWT({
-            email: config.client_email,
-            key: config.private_key,
-            scopes: ['https://www.googleapis.com/auth/spreadsheets']
-        });
-        const sheet = google.sheets({
-            version: 'v4',
-            auth: auth
-        });
-        const context = await sheet.spreadsheets.values.get({
-            spreadsheetId: config.sheet_id,
-            range: 'A1:K44'
-        });
-
-        // context.data.values.forEach( (item, idx, arr) => {
-        //     console.log(idx);
-        // })
-
-        return context.data.values;
+    @Get('all')
+    getListAll() : Array<Object> {
+        return this.krtrkaaService.getAllTracks();
     }
+
+    @Get('info/:id')
+    findOne(@Param() params) : Object {
+        return this.krtrkaaService.getTrackInfo(params.id);
+    }
+
+    @Redirect('https://www.youtube.com', 301)
+    @Get('play/:id')
+    async goToTrack(@Param('id') id: String ) {
+        const trackInfo : Object = await this.krtrkaaService.getTrackInfo(+id);
+        // console.log(trackInfo);
+        return { url : trackInfo['SONG_YTB_URL'] }
+    }
+
 }
